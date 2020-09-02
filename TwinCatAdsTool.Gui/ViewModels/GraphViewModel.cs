@@ -1,28 +1,42 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO;
+using System.IO.Ports;
 using System.Reactive.Linq;
 using DynamicData;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Disposables;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 using OxyPlot;
 using OxyPlot.Axes;
 using OxyPlot.Series;
 using ReactiveUI;
 using TwinCatAdsTool.Interfaces.Extensions;
+using TwinCatAdsTool.Interfaces.Models;
+using TwinCatAdsTool.Interfaces.Services;
+using SaveFileDialog = Microsoft.Win32.SaveFileDialog;
 
 namespace TwinCatAdsTool.Gui.ViewModels
 {
     public class GraphViewModel : ViewModelBase
     {
+        private readonly ICsvWriter csvWriter;
         readonly Dictionary<string, List<DataPoint>> dataPoints = new Dictionary<string, List<DataPoint>>();
 
         private readonly SourceCache<SymbolObservationViewModel, string> symbolCache = new SourceCache<SymbolObservationViewModel, string>(x => x.Name);
         private PlotModel plotModel;
         private TimeSpan expiresAfter = TimeSpan.FromMinutes(10);
         private bool pause = false;
+
+        public GraphViewModel(ICsvWriter csvWriter)
+        {
+            this.csvWriter = csvWriter;
+        }
+
+        public ReactiveCommand<Unit, Unit> SaveGraphCmd { get; set; }
 
 
         public TimeSpan ExpiresAfter {
@@ -69,6 +83,9 @@ namespace TwinCatAdsTool.Gui.ViewModels
                 .Subscribe()
                 .AddDisposableTo(Disposables);
 
+            SaveGraphCmd = ReactiveCommand.CreateFromTask(SaveGraph)
+                .AddDisposableTo(Disposables);
+
             var axis = new DateTimeAxis
             {
                 Position = AxisPosition.Bottom,
@@ -77,6 +94,51 @@ namespace TwinCatAdsTool.Gui.ViewModels
             };
 
             PlotModel.Axes.Add(axis);
+
+     
+        }
+
+        private async Task<Unit> SaveGraph()
+        {
+            string path = string.Empty;
+            Stream myStream;
+            var saveFileDialog = new SaveFileDialog();
+            saveFileDialog.Filter = "csv files (*.csv)|*.csv";
+            saveFileDialog.FilterIndex = 2;
+            saveFileDialog.RestoreDirectory = true;
+
+            if (saveFileDialog.ShowDialog() == true)
+            {
+                path = saveFileDialog.FileName;
+            }
+
+
+            var csvLists = BuildList();
+            foreach (var csvList in csvLists)
+            {
+                if (!string.IsNullOrEmpty(csvList.First().Name))
+                {
+                    await csvWriter.CreateAndSaveCsv(csvList, path.Insert(path.Length - 4, csvList.First().Name));
+                }
+                
+            }
+            return Unit.Default;
+        }
+
+        private List<List<CsvModel>> BuildList()
+        {
+            var csvLists = new List<List<CsvModel>>();
+            foreach (var key in dataPoints.Keys)
+            {
+                var csvList = new List<CsvModel>();
+                foreach (var dataPoint in dataPoints[key])
+                {
+                    csvList.Add(new CsvModel(){Name = key, Value = dataPoint.Y, Time = DateTime.FromOADate(dataPoint.X)});
+                }
+                csvLists.Add(csvList);
+            }
+
+            return csvLists;
         }
 
         private static PlotModel CreateDefaultPlotModel()

@@ -14,6 +14,7 @@ namespace TwinCatAdsTool.Logic
             Bind<IClientService>().To<ClientService>().InSingletonScope();
             Bind<IPersistentVariableService>().To<PersistentVariableService>().InSingletonScope();
             Bind<ISelectionService<ISymbol>>().To<SymbolSelectionService>().InSingletonScope();
+            Bind<ICsvWriter>().To<CsvHandler>();
         }
 	}
 }
