@@ -4,7 +4,7 @@
 
 The TwinCAT Tool you ever wanted and your lite alternative to visual studio
 
-### [Download it now](https://github.com/fbarresi/TwinCatAdsTool/releases/latest)
+### [Download it now](https://github.com/Galiad/TwinCatAdsTool/releases/latest)
 
 ## Features
 
